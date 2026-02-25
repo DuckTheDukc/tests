@@ -1,37 +1,43 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import  List
 
-app=FastAPI()
+app = FastAPI()
 
-posts_db={}
+posts_db = {}
 
-class post(BaseModel):
+class Post(BaseModel):
     name: str
     text: str
     comments: List[str] = []
 
 @app.post("/posts/")
-def create_post(post:post):
+def create_post(post: Post):
     if post.name in posts_db:
-        raise HTTPException(status_code=code, detail=detail)
+        raise HTTPException(status_code=400, detail="пост с таким названием уже существует")
     posts_db[post.name] = post
-    return {"message":f"добавлен пост {post.name}", "post":post}
+    return {"message": f"добавлен пост {post.name}", "post": post}
 
 @app.put("/posts/{post_name}")
-def update_post(post_name:str, updated_post:post | None = None):
+def update_post(post_name: str, updated_post: Post):
     if post_name not in posts_db:
         raise HTTPException(status_code=404, detail="пост не найден")
     
-    if post_name != updated_post.name and updated_post.name in posts_db:
-        raise HTTPException(status_code=400, detail="пост с таким названием уже существует") 
 
-    return {"message":"пост обновлен", "post": post}
+    if post_name != updated_post.name and updated_post.name in posts_db:
+        raise HTTPException(status_code=400, detail="пост с таким названием уже существует")
+    
+
+    if post_name != updated_post.name:
+        del posts_db[post_name]
+
+    posts_db[updated_post.name] = updated_post
+    return {"message": "пост обновлен", "post": updated_post}
 
 @app.get("/posts/{post_name}")
-def get_post(post_name:str):
+def get_post(post_name: str):
     if post_name not in posts_db:
-        raise HTTPException(status_code=code, detail=detail)
+        raise HTTPException(status_code=404, detail="пост не найден")
     return posts_db[post_name]
 
 @app.get("/posts/")
@@ -39,8 +45,8 @@ def get_all_posts():
     return {"posts": list(posts_db.values())}
 
 @app.delete("/posts/{post_name}")
-def delete_post(post_name:str):
+def delete_post(post_name: str):
     if post_name not in posts_db:
-        raise HTTPException(status_code=code, detail=detail)
+        raise HTTPException(status_code=404, detail="пост не найден")
     del posts_db[post_name]
-    return {"message":"задача удалена"}
+    return {"message": "пост удален"}
